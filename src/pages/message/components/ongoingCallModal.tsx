@@ -6,6 +6,9 @@ import { PhoneOff, Mic, MicOff, Video, VideoOff } from "lucide-react";
 import { agoraClient } from "../../../utils/agoraClient";
 import { leaveAgora } from "../../../utils/agoraClient";
 import { localAudioTrack, localVideoTrack } from "../../../utils/agoraClient";
+import socketCall from "../../../utils/socketCall";
+import { useSelector } from "react-redux";
+import { RootState } from "../../../redux/store";
 
 interface OngoingCallModalProps {
   callerName: string;
@@ -28,6 +31,9 @@ const OngoingCallModal: React.FC<OngoingCallModalProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const call = useSelector((state: RootState) => state.call);
+const currentUser = useSelector((state: RootState) => state.auth.user);
+
   useEffect(() => {
     const registerEventHandlers = () => {
       agoraClient.on("user-published", async (user, mediaType) => {
@@ -66,19 +72,18 @@ const OngoingCallModal: React.FC<OngoingCallModalProps> = ({
       }
     }
   }, []);
-
-  // const handleEndCall = () => {
-  //   if (currentCall.toUserId) {
-  //     socketCall.emit('endCall', { toUserId: currentCall.toUserId });
-  //   } else if (currentCall.fromUserId) {
-  //     socketCall.emit('endCall', { toUserId: currentCall.fromUserId });
-  //   }
-  //   onEndCall();
-  // };
+  
   const handleEndCall = () => {
+    const oppositeUserId =
+      currentUser && currentUser._id === call.fromUserId ? call.toUserId : call.fromUserId;
+  
+    socketCall.emit("endCall", { toUserId: oppositeUserId });
+  
     leaveAgora();
     onEndCall();
   };
+  
+  
 
   // Tăng thời gian mỗi giây
   useEffect(() => {

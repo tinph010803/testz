@@ -33,6 +33,7 @@ export interface Member {
     updatedAt?: string;
     createdAt?: string;
     lastMessage?: string;
+    hidden?: boolean;
   }
   
   export interface ConversationSidebarProps {

@@ -478,11 +478,98 @@ export const deleteMessage = createAsyncThunk(
   }
 );
 
+export const deleteConversation = createAsyncThunk(
+  'chat/deleteConversation',
+  async (
+    {
+      conversationId,
+      userId,
+    }: { conversationId: string; userId: string },
+    { getState, rejectWithValue }
+  ) => {
+    const token = (getState() as RootState).auth?.token;
+    if (!token) return rejectWithValue('No token found');
+
+    try {
+      await axios.patch(
+        `${CHAT_SERVICE_URL}/deleted-conversations/deleted-at`,
+        {
+          userId,
+          conversationId,
+        },
+        {
+          headers: {
+            Authorization: `${token}`,
+          },
+        }
+      );
+      return conversationId; // Trả về ID để xóa local store nếu muốn
+    } catch (error) {
+      console.error('Error marking conversation as deleted:', error);
+      return rejectWithValue('Failed to mark conversation as deleted');
+    }
+  }
+);
+
+// ✅ Đặt unreadCount = 0
+export const resetUnreadCount = createAsyncThunk(
+  'chat/resetUnreadCount',
+  async (
+    { userId, conversationId }: { userId: string; conversationId: string },
+    { getState, rejectWithValue }
+  ) => {
+    const token = (getState() as RootState).auth?.token;
+    if (!token) return rejectWithValue('No token found');
+
+    try {
+      await axios.patch(
+        `${CHAT_SERVICE_URL}/deleted-conversations/unread-count`,
+        { userId, conversationId, unreadCount: 0 },
+        { headers: { Authorization: `${token}` } }
+      );
+      return { conversationId }; // trả lại để cập nhật local
+    } catch (error) {
+      console.error('Error resetting unread count:', error);
+      return rejectWithValue('Failed to reset unread count');
+    }
+  }
+);
+
+// ✅ Tăng unreadCount lên 1
+export const incrementUnreadCount = createAsyncThunk(
+  'chat/incrementUnreadCount',
+  async (
+    { userId, conversationId }: { userId: string; conversationId: string },
+    { getState, rejectWithValue }
+  ) => {
+    const token = (getState() as RootState).auth?.token;
+    if (!token) return rejectWithValue('No token found');
+
+    try {
+      await axios.patch(
+        `${CHAT_SERVICE_URL}/deleted-conversations/unread-count/increment`,
+        { userId, conversationId },
+        { headers: { Authorization: `${token}` } }
+      );
+      return { conversationId }; // trả lại để cập nhật local
+    } catch (error) {
+      console.error('Error incrementing unread count:', error);
+      return rejectWithValue('Failed to increment unread count');
+    }
+  }
+);
+
 
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
+    unhideConversation: (state, action: PayloadAction<string>) => {
+      const conversation = state.conversations.find(c => c._id === action.payload);
+      if (conversation) {
+        conversation.hidden = false;
+      }
+    },
     updateGroupAvatar: (
       state,
       action: PayloadAction<{ conversationId: string; avatar: string }>
@@ -667,6 +754,30 @@ const chatSlice = createSlice({
 
   },
   extraReducers: (builder) => {
+    builder
+  .addCase(deleteConversation.pending, (state) => {
+    state.loading = true;
+    state.error = null;
+  })
+  .addCase(deleteConversation.fulfilled, (state, action: PayloadAction<string>) => {
+    state.loading = false;
+    const conversationId = action.payload;
+
+    const conversation = state.conversations.find(c => c._id === conversationId);
+    if (conversation) {
+      conversation.hidden = true; // 👈 bạn có thể dùng `isDeletedByUser` thay thế nếu muốn rõ hơn
+      conversation.messages = [];
+    }
+    
+    if (state.selectedConversation?._id === conversationId) {
+      state.selectedConversation = null;
+    }
+  })
+  .addCase(deleteConversation.rejected, (state, action) => {
+    state.loading = false;
+    state.error = action.payload as string;
+  });
+
 
     builder
       .addCase(deleteMessage.pending, (state) => {
@@ -695,14 +806,6 @@ const chatSlice = createSlice({
         state.loading = false;
 
         const currentUserId = (action.meta.arg as string); // user._id
-
-        const unreadMap = new Map<string, number>();
-        state.conversations.forEach((conv) => {
-          if (conv._id && typeof conv.unreadCount === 'number') {
-            unreadMap.set(conv._id, conv.unreadCount);
-          }
-        });
-
         console.log('Fetched conversations:payloadadadadadad', action.payload); // Debugging log
         console.log('User ID:', currentUserId); // Debugging log
         state.conversations = action.payload.map((conv) => {
@@ -712,13 +815,8 @@ const chatSlice = createSlice({
             conv.avatar = other?.avatar || '';
           }
 
-          // ⚠️ Gán lại unreadCount nếu có
-          conv.unreadCount = unreadMap.get(conv._id) || 0;
-
           return conv;
         });
-
-
       })
       .addCase(getAllConversations.rejected, (state, action) => {
         state.loading = false;
@@ -1015,5 +1113,6 @@ export const { addMessageToState, setSelectedConversation,
   setUnreadToZero, revokeMessageLocal, removeConversation,
   deleteMessageLocal, addConversation,
   removeMemberFromConversation, updateAdminInConversation,
-  addMemberToConversation, updateGroupAvatar, updateGroupName } = chatSlice.actions;
+  addMemberToConversation, updateGroupAvatar, updateGroupName,
+  unhideConversation } = chatSlice.actions;
 export default chatSlice.reducer;

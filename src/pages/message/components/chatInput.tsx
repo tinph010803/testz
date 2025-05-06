@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Upload, SendHorizonal, Smile, Trash2 } from 'lucide-react';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../../redux/store';
+import { useSelector, useDispatch } from 'react-redux';
+import { AppDispatch, RootState } from '../../../redux/store';
 import socket from '../../../utils/socket';
 import { Message } from '../../../redux/slice/types';
 import { fileIcons } from '../../../assets';
+import { incrementUnreadCount } from '../../../redux/slice/chatSlice';
 
 const ChatInput: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
   const [message, setMessage] = useState('');
   const [isEmojiPickerOpen, setEmojiPickerOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -47,10 +49,17 @@ const ChatInput: React.FC = () => {
       };
 
       socket.emit('sendMessage', textMessage);
-      // dispatch(addMessageToState({
-      //   message: textMessage,
-      //   currentUserId: userDetail.userId,
-      // }));
+
+      // ✅ Tăng unreadCount cho các thành viên còn lại
+      selectedConversation.members.forEach(member => {
+        if (member.userId !== userDetail.userId) {
+          dispatch(incrementUnreadCount({
+            userId: member.userId,
+            conversationId: selectedConversation._id,
+          }));
+        }
+      });
+
     }
 
     // Gửi từng file theo thứ tự
@@ -85,10 +94,17 @@ const ChatInput: React.FC = () => {
       };
 
       socket.emit('sendMessage', fileMessage);
-      // dispatch(addMessageToState({
-      //   message: fileMessage,
-      //   currentUserId: userDetail.userId,
-      // }));
+
+      // ✅ Tăng unreadCount cho file gửi đi
+      selectedConversation.members.forEach(member => {
+        if (member.userId !== userDetail.userId) {
+          dispatch(incrementUnreadCount({
+            userId: member.userId,
+            conversationId: selectedConversation._id,
+          }));
+        }
+      });
+
     }
 
     // Xoá nội dung sau khi gửi xong

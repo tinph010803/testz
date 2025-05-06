@@ -66,7 +66,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({ onSelectConve
       .toLowerCase();                     // về thường
   };
   console.log('Conversations filllllllll:', conversations);
-  const filteredConversations = conversations?.filter((conversation) => {
+  const filteredConversations = conversations
+  ?.filter((conversation) => !conversation.hidden)
+  .filter((conversation) => {
     const target = conversation.isGroup
       ? conversation.groupName
       : getOtherUserName(conversation.members);

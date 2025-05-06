@@ -4,31 +4,21 @@ import { RootState } from '../../../redux/store';
 import { acceptedCall, clearLocalStream, closeCall, endCall, rejectedCall, startCall } from '../../../redux/slice/callSlice';
 import socketCall from '../../../utils/socketCall';
 import OngoingCallModal from './ongoingCallModal';
-import { joinAgora, localVideoTrack } from "../../../utils/agoraClient";
-
+import { joinAgora } from "../../../utils/agoraClient";
+import { useCallEndedListener } from '../../../redux/hooks/useCallEndedListener';
 const CallModal: React.FC = () => {
   const dispatch = useDispatch();
   const call = useSelector((state: RootState) => state.call);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  useCallEndedListener(); // Custom hook để lắng nghe sự kiện kết thúc cuộc gọi
 
-  useEffect(() => {
-    socketCall.on('callEnded', () => {
-      dispatch(endCall());
-    });
-
-    return () => {
-      socketCall.off('callEnded');
-    };
-  }, [dispatch]);
 
   useEffect(() => {
     socketCall.on('callAccepted', async () => {
       try {
         await joinAgora(`call_${call.fromUserId}_${call.toUserId}`, call.fromUserId);
-        if (localVideoTrack) {
-          localVideoTrack.play("local-player");
-        }
+       
         dispatch(acceptedCall());
       } catch (err) {
         console.error("Failed to join Agora:", err);
@@ -92,7 +82,7 @@ const CallModal: React.FC = () => {
     dispatch(clearLocalStream());
     dispatch(endCall());
   };
-  
+
   if (!call.isVisible && !call.isOngoing) return null;
 
   return (
@@ -106,7 +96,7 @@ const CallModal: React.FC = () => {
           calleeAvatar={call.calleeAvatar}
           onEndCall={handleEndCall}
           localStream={localStreamRef.current}
-          />
+        />
 
       ) : (
         <div className="fixed bottom-5 right-5 z-50">
@@ -142,7 +132,7 @@ const CallModal: React.FC = () => {
                       fromAvatar: call.fromAvatar,
                       isGroup: call.isGroup,
                       groupName: call.groupName,
-                      
+
                     }));
 
                     // Gửi lại socket thông báo gọi

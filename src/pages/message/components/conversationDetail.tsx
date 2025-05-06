@@ -3,7 +3,7 @@ import { ChatInput } from "./index";
 import { format, formatDistanceToNow } from "date-fns";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../../redux/store";
-import { deleteMessageLocal, revokeMessageLocal } from "../../../redux/slice/chatSlice";
+import { deleteConversation, deleteMessageLocal, incrementUnreadCount, revokeMessageLocal } from "../../../redux/slice/chatSlice";
 import { Conversation, Member, Message } from '../../../redux/slice/types';
 import socket from '../../../utils/socket';
 import socketCall from '../../../utils/socketCall';
@@ -129,11 +129,11 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
     };
 
     const shouldListen = previewImageIndex !== null || isSearching;
-  
+
     if (shouldListen) {
       window.addEventListener("keydown", handleKeyDown);
     }
-  
+
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
@@ -224,13 +224,13 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
               });
               toast.dismiss(t.id);
             }}
-            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 cursor-pointer"
           >
             Yes
           </button>
           <button
             onClick={() => toast.dismiss(t.id)}
-            className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+            className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer"
           >
             No
           </button>
@@ -255,13 +255,13 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
               });
               toast.dismiss(t.id);
             }}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
           >
             Yes
           </button>
           <button
             onClick={() => toast.dismiss(t.id)}
-            className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+            className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer"
           >
             No
           </button>
@@ -269,6 +269,75 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
       </div>
     ));
   };
+
+  const handleLeaveGroup = () => {
+    if (!selectedConversation || !currentUser?._id) return;
+
+    // Kiểm tra nếu user hiện tại là admin
+    if (selectedConversation.adminId === currentUser._id) {
+      toast.error("You must transfer admin rights before leaving the group.");
+      return;
+    }
+
+    toast.custom((t) => (
+      <div className="bg-[#2a2a2a] text-white p-4 rounded-lg shadow-md w-72">
+        <p className="mb-2">Are you sure you want to leave this group?</p>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => {
+              socket.emit('leaveGroup', {
+                conversationId: selectedConversation._id,
+                userId: currentUser._id,
+              });
+              toast.dismiss(t.id);
+            }}
+            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 cursor-pointer"
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer"
+          >
+            No
+          </button>
+        </div>
+      </div>
+    ));
+  };
+
+  const handleDeleteChat = () => {
+    if (!selectedConversation?._id || !currentUser?._id) return;
+
+    toast.custom((t) => (
+      <div className="bg-[#2a2a2a] text-white p-4 rounded-lg shadow-md w-72">
+        <p className="mb-2">Are you sure you want to delete this chat?</p>
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={() => {
+              dispatch(
+                deleteConversation({
+                  conversationId: selectedConversation._id,
+                  userId: currentUser._id,
+                })
+              );
+              toast.dismiss(t.id);
+            }}
+            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 cursor-pointer"
+          >
+            Yes
+          </button>
+          <button
+            onClick={() => toast.dismiss(t.id)}
+            className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer"
+          >
+            No
+          </button>
+        </div>
+      </div>
+    ));
+  };
+
 
   if (!selectedConversation) {
     return (
@@ -394,10 +463,15 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
     scrollToMessage(searchResults[nextIndex]);
   };
 
+  const escapeRegExp = (string: string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  };
+
   const highlightText = (text: string, keyword: string) => {
     if (!keyword) return text;
 
-    const parts = text.split(new RegExp(`(${keyword})`, 'gi'));
+    const escapedKeyword = escapeRegExp(keyword);
+    const parts = text.split(new RegExp(`(${escapedKeyword})`, 'gi'));
 
     return parts.map((part, index) => (
       part.toLowerCase() === keyword.toLowerCase() ? (
@@ -1023,13 +1097,17 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center text-white cursor-pointer hover:bg-gray-800 p-2 rounded-md">
+                <div className="flex items-center text-white cursor-pointer hover:bg-gray-800 p-2 rounded-md"
+                  onClick={handleDeleteChat}
+                >
                   <Trash2 size={16} className="mr-2 text-red-500" />
                   <span className="text-red-500">Delete chat</span>
                 </div>
                 {/* Nếu đang ở nhóm chat thì có thêm ntu1 này */}
                 {selectedConversation.isGroup && (
-                  <div className="flex items-center text-white cursor-pointer hover:bg-gray-800 p-2 rounded-md">
+                  <div className="flex items-center text-white cursor-pointer hover:bg-gray-800 p-2 rounded-md"
+                    onClick={handleLeaveGroup}
+                  >
                     <LogOut size={16} className="mr-2 text-red-500" />
                     <span className="text-red-500">Leave the group</span>
                   </div>
@@ -1099,6 +1177,19 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
                 fileName: message.fileName || '',
                 fileType: message.fileType || '',
               });
+
+              // 🔁 Tăng unreadCount cho từng thành viên nhóm nhận
+              const targetConversation = conversations.find(c => c._id === convId);
+              if (targetConversation) {
+                targetConversation.members.forEach(member => {
+                  if (member.userId !== currentUserId) {
+                    dispatch(incrementUnreadCount({
+                      conversationId: convId,
+                      userId: member.userId,
+                    }));
+                  }
+                });
+              }
             });
 
             toast.success("Message forwarded successfully");

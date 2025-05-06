@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import socket from '../utils/socket';
 import { RootState, AppDispatch } from '../redux/store';
@@ -6,7 +6,8 @@ import {
   addMessageToState, getAllConversations, revokeMessageLocal,
   deleteMessageLocal, addConversation, setSelectedConversation,
   removeMemberFromConversation, updateAdminInConversation, removeConversation, addMemberToConversation,
-  updateGroupAvatar, updateGroupName
+  updateGroupAvatar, updateGroupName,
+  unhideConversation
 } from '../redux/slice/chatSlice';
 import { Message, Member } from '../redux/slice/types';
 import { toast } from 'react-toastify';
@@ -17,6 +18,32 @@ const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const dispatch = useDispatch<AppDispatch>();
 
   const hasConnected = useRef(false);
+  const conversationsRef = useRef(conversations);
+
+  // Cập nhật conversationsRef mỗi lần conversations thay đổi
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  // ✅ useCallback để đảm bảo reference không đổi
+  const handleReceiveMessage = useCallback((newMessage: Message) => {
+    if (!user) return;
+
+    console.log('📩 Received message from socket:', newMessage);
+
+    dispatch(addMessageToState({
+      message: {
+        ...newMessage,
+        isSentByUser: newMessage.senderId === user?._id
+      },
+      currentUserId: user._id,
+    }));
+
+    const targetConversation = conversationsRef.current.find(c => c._id === newMessage.conversationId);
+    if (targetConversation?.hidden) {
+      dispatch(unhideConversation(newMessage.conversationId));
+    }
+  }, [user, dispatch]);
 
   useEffect(() => {
     if (!user?._id || hasConnected.current) return;
@@ -26,18 +53,6 @@ const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
     dispatch(getAllConversations(user._id)); // Load tất cả conversation
 
     hasConnected.current = true;
-
-    const handleReceiveMessage = (newMessage: Message) => {
-      // if (newMessage.senderId === user._id) return;
-      console.log('📩 Received message from socket:', newMessage);
-      dispatch(addMessageToState({
-        message: {
-          ...newMessage,
-          isSentByUser: newMessage.senderId === user._id
-        },
-        currentUserId: user._id,
-      }));
-    };
 
     socket.on('receiveMessage', handleReceiveMessage);
 
@@ -90,6 +105,16 @@ const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
       }
     });
 
+    // Khi có thành viên rời nhóm
+    socket.on('memberLeft', ({ conversationId, userId }) => {
+      if (userId === user._id) {
+        toast.info('You have left the group chat.');
+        dispatch(removeConversation(conversationId));
+      } else {
+        dispatch(removeMemberFromConversation({ conversationId, userId }));
+      }
+    });
+
     // Khi chuyển admin
     socket.on('adminTransferred', ({ conversationId, newAdminId }) => {
       dispatch(updateAdminInConversation({ conversationId, newAdminId }));
@@ -117,10 +142,11 @@ const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) =
       socket.off('memberAdded');
       socket.off('groupAvatarUpdated');
       socket.off('groupNameUpdated');
+      socket.off('memberLeft');
       socket.disconnect();
       hasConnected.current = false;
     };
-  }, [user?._id, dispatch]);
+  }, [user?._id, dispatch, handleReceiveMessage]);
 
   // 🔁 2. Mỗi khi conversation thay đổi → join lại các room
   useEffect(() => {
