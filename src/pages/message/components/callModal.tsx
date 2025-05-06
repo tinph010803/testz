@@ -4,7 +4,7 @@ import { RootState } from '../../../redux/store';
 import { acceptedCall, clearLocalStream, closeCall, endCall, rejectedCall, startCall } from '../../../redux/slice/callSlice';
 import socketCall from '../../../utils/socketCall';
 import OngoingCallModal from './ongoingCallModal';
-import { joinAgora } from "../../../utils/agoraClient";
+import { joinOnly, publishTracks } from "../../../utils/agoraClient";
 import { useCallEndedListener } from '../../../redux/hooks/useCallEndedListener';
 const CallModal: React.FC = () => {
   const dispatch = useDispatch();
@@ -17,8 +17,8 @@ const CallModal: React.FC = () => {
   useEffect(() => {
     socketCall.on('callAccepted', async () => {
       try {
-        await joinAgora(`call_${call.fromUserId}_${call.toUserId}`, call.fromUserId);
-       
+        await joinOnly(`call_${call.fromUserId}_${call.toUserId}`, call.fromUserId);
+        await publishTracks();
         dispatch(acceptedCall());
       } catch (err) {
         console.error("Failed to join Agora:", err);

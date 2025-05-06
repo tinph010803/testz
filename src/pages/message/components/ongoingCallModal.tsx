@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { PhoneOff, Mic, MicOff, Video, VideoOff } from "lucide-react";
 // import socketCall from "../../../utils/socketCall";
 // import { useSelector } from "react-redux";
@@ -32,21 +32,24 @@ const OngoingCallModal: React.FC<OngoingCallModalProps> = ({
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const call = useSelector((state: RootState) => state.call);
-const currentUser = useSelector((state: RootState) => state.auth.user);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const remotePlayerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const registerEventHandlers = () => {
       agoraClient.on("user-published", async (user, mediaType) => {
         await agoraClient.subscribe(user, mediaType);
         console.log("📡 Subscribed to", user.uid);
-      
+
         if (mediaType === "audio" && user.audioTrack) {
           user.audioTrack.play(); // 🔈 BẮT BUỘC ĐỂ NGHE ÂM THANH
           console.log("🎧 Playing remote audio...");
         }
-      
+
         if (mediaType === "video" && user.videoTrack) {
-          user.videoTrack.play("remote-player"); // hoặc append vào element tuỳ bạn
+          if (remotePlayerRef.current) {
+            user.videoTrack.play(remotePlayerRef.current);
+          }
         }
       });
 
@@ -72,18 +75,18 @@ const currentUser = useSelector((state: RootState) => state.auth.user);
       }
     }
   }, []);
-  
+
   const handleEndCall = () => {
     const oppositeUserId =
       currentUser && currentUser._id === call.fromUserId ? call.toUserId : call.fromUserId;
-  
+
     socketCall.emit("endCall", { toUserId: oppositeUserId });
-  
+
     leaveAgora();
     onEndCall();
   };
-  
-  
+
+
 
   // Tăng thời gian mỗi giây
   useEffect(() => {
@@ -117,7 +120,7 @@ const currentUser = useSelector((state: RootState) => state.auth.user);
   return (
     <div className="fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center z-50">
       <div id="local-player" style={{ width: 300, height: 200 }}></div>
-      <div id="remote-player" style={{ width: 300, height: 200 }}></div>
+      <div ref={remotePlayerRef} style={{ width: 300, height: 200 }}></div>
 
       <div className="text-white text-2xl mb-4">
         {formatDuration(callDuration)}

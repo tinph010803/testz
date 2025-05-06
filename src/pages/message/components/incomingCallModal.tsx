@@ -4,7 +4,7 @@ import { RootState } from '../../../redux/store';
 import { hideIncomingCall } from '../../../redux/slice/incomingCallSlice';
 import socketCall from '../../../utils/socketCall';
 import { acceptedCall, startCall } from '../../../redux/slice/callSlice';
-import { joinAgora } from "../../../utils/agoraClient";
+import { joinOnly, publishTracks } from "../../../utils/agoraClient";
 import { useCallEndedListener } from '../../../redux/hooks/useCallEndedListener';
 
 const RINGTONE_URL = "https://res.cloudinary.com/df2amyjzw/video/upload/v1744890393/audiochuong_qdwihw.mp3";
@@ -41,66 +41,36 @@ const IncomingCallModal = () => {
         };
     }, [call.visible]);
 
-    // const handleAccept = async () => {
-    //     console.log('✅ Accepted call from', call.fromUserId);
-
-    //     try {
-    //         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: call.isVideo });
-    //         localStreamRef.current = stream;
-
-    //         socketCall.emit('callAccepted', {
-    //             toUserId: call.fromUserId,
-    //         });
-
-    //         dispatch(hideIncomingCall()); // Ẩn modal nhận cuộc gọi
-
-    //         // Gọi lại startCall để mở giao diện gọi
-    //         dispatch(startCall({
-    //             isVideo: call.isVideo,
-    //             calleeName: userDetails.firstname + " " + userDetails.lastname,
-    //             calleeAvatar: userDetails.avatar || '',
-    //             toUserId: call.fromUserId,
-    //             fromUserId: currentUser?._id || '',
-    //             fromName: call.fromName,
-    //             fromAvatar: call.fromAvatar,
-    //             isGroup: call.isGroup,
-    //             groupName: call.groupName,
-    //         }));
-
-    //         dispatch(acceptedCall()); // Bật trạng thái ongoing
-    //     } catch (error) {
-    //         console.error('🚫 Error accessing media devices:', error);
-    //     }
-    // };
 
     const handleAccept = async () => {
         try {
-            if (currentUser?._id) {
-                await joinAgora(`call_${call.fromUserId}_${currentUser._id}`, currentUser._id);
-                
-            } else {
-                console.error("User ID is undefined. Cannot join Agora.");
-            }
-            socketCall.emit("callAccepted", { toUserId: call.fromUserId });
-            dispatch(hideIncomingCall());
-            dispatch(startCall({
-                isVideo: call.isVideo,
-                calleeName: `${userDetails.firstname || ''} ${userDetails.lastname || ''}`,
-                calleeAvatar: userDetails.avatar || '',
-                toUserId: call.fromUserId,
-                fromUserId: currentUser?._id || '',
-                fromName: call.fromName,
-                fromAvatar: call.fromAvatar,
-                isGroup: call.isGroup,
-                groupName: call.groupName,
-            }));
-            dispatch(acceptedCall());
-            console.log("Joining Agora with", call.fromUserId, currentUser?._id);
-
+          if (currentUser?._id) {
+            await joinOnly(`call_${call.fromUserId}_${currentUser._id}`, currentUser._id);
+            await publishTracks();
+          } else {
+            console.error("User ID is undefined. Cannot join Agora.");
+          }
+      
+          socketCall.emit("callAccepted", { toUserId: call.fromUserId });
+          dispatch(hideIncomingCall());
+          dispatch(startCall({
+            isVideo: call.isVideo,
+            calleeName: `${userDetails.firstname || ''} ${userDetails.lastname || ''}`,
+            calleeAvatar: userDetails.avatar || '',
+            toUserId: call.fromUserId,
+            fromUserId: currentUser?._id || '',
+            fromName: call.fromName,
+            fromAvatar: call.fromAvatar,
+            isGroup: call.isGroup,
+            groupName: call.groupName,
+          }));
+          dispatch(acceptedCall());
+          console.log("Joining Agora with", call.fromUserId, currentUser?._id);
         } catch (err) {
-            console.error("Failed to join Agora:", err);
+          console.error("Failed to join Agora:", err);
         }
-    };
+      };
+      
 
     const handleDecline = () => {
         console.log('❌ Declined call from', call.fromUserId);
