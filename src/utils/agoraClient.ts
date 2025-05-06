@@ -10,7 +10,6 @@ export const TOKEN = null;
 export const agoraClient: IAgoraRTCClient = AgoraRTC.createClient({
   mode: "rtc",
   codec: "vp8",
-  proxyServer: "https://ap-web-1.agora.io", // bạn có thể dùng bất kỳ server nào của Agora theo region
 });
 
 export let localAudioTrack: IMicrophoneAudioTrack | null = null;
