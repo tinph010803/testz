@@ -37,15 +37,17 @@ export const joinOnly = async (channel: string, uid: string) => {
 
 export const publishTracks = async () => {
   try {
+    // Không truyền cameraId → dùng đúng camera mặc định của trình duyệt
     [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
-    console.log("✅ Created local tracks");
 
+    console.log("✅ Created local tracks with default devices");
     await agoraClient.publish([localAudioTrack, localVideoTrack]);
     console.log("📡 Published tracks");
   } catch (error) {
     console.error("❌ publishTracks failed:", error);
   }
 };
+
 
 // ✅ Nếu vẫn cần giữ hàm cũ để dùng nhanh, thì để như sau:
 export const joinAgora = async (channel: string, uid: string) => {
