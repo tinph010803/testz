@@ -10,6 +10,7 @@ export const TOKEN = null;
 export const agoraClient: IAgoraRTCClient = AgoraRTC.createClient({
   mode: "rtc",
   codec: "vp8",
+  proxyServer: "https://ap-web-1.agora.io", // bạn có thể dùng bất kỳ server nào của Agora theo region
 });
 
 export let localAudioTrack: IMicrophoneAudioTrack | null = null;
@@ -27,7 +28,6 @@ export const joinAgora = async (channel: string, uid: string) => {
       console.warn("⚠️ Already connected to Agora. Leaving before re-joining...");
       await leaveAgora(); // 👈 phải leave sạch trước
     }
-
     await agoraClient.join(APP_ID, channel, TOKEN, uid);
 
     // ⚠️ Tạo mới track mỗi lần join
