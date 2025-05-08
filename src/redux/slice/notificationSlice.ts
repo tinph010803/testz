@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 import { RootState } from '../store';
 
-const API_BASE_URL = "http://localhost:3000/noti"; // API Gateway
+const API_BASE_URL = import.meta.env.VITE_API_URL + '/noti';
 
 export interface Notification {
   _id: string;

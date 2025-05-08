@@ -2,7 +2,8 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { RootState } from '../store';
 
-const USER_SERVICE_URL = 'http://localhost:3000/users'; // Cập nhật URL nếu cần
+// const USER_SERVICE_URL = 'http://localhost:3000/users'; // Cập nhật URL nếu cần
+const USER_SERVICE_URL = import.meta.env.VITE_API_URL + '/users';
 
 interface User {
   _id: string;

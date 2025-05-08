@@ -1,8 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const LIKE_API = 'http://localhost:3000/likes';
-
+const LIKE_API = import.meta.env.VITE_API_URL + '/likes';
 export const fetchUserLikedPosts = createAsyncThunk(
   'likes/fetchUserLikedPosts',
   async (_, { rejectWithValue }) => {

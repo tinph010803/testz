@@ -10,9 +10,6 @@ export default defineConfig({
     server: {
       port: 4000,
       open: true,
-      allowedHosts: [
-        'b3c2-2402-800-6318-9d6f-498-b30f-7901-55bc.ngrok-free.app'
-      ]
     },
     build: {
       outDir: 'dist',

@@ -7,7 +7,7 @@ import { AppDispatch, RootState } from "../../redux/store";
 import { io } from "socket.io-client";  // Kết nối WebSocket
 import { createNotification } from "../../redux/slice/notificationSlice"; // Import action createNotification
 
-const socket = io("http://localhost:5007");  
+const socket = io("http://localhost:5007");
 import '../../global.css'
 
 import {
@@ -18,6 +18,8 @@ import {
 } from "../../redux/slice/followSlice";
 import { fetchUserDetailById, getTopUsersExcludingFollowed } from "../../redux/slice/userSlice";
 import { fetchUserPosts } from "../../redux/slice/postProfileSlice";
+import { FollowItem } from "../../redux/slice/followSlice";
+import { getFollowingsByUserId } from "../../redux/slice/followSlice";
 
 const UserInfo_Follow = () => {
   const navigate = useNavigate();
@@ -28,26 +30,30 @@ const UserInfo_Follow = () => {
   // const user = useSelector((state: RootState) => state.user);
   const { posts: userPosts } = useSelector((state: RootState) => state.postProfile);
   const followers = useSelector((state: RootState) => state.follow.followers);
-  const followings = useSelector((state: RootState) => state.follow.followings);
-  const [activeTab, setActiveTab] = useState("Posts");
   const [isFollowing, setIsFollowing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [profileTab, setProfileTab] = useState("Posts"); // Dành cho Posts/Featured/Media
+  const [modalTab, setModalTab] = useState<"followers" | "following">("followers"); // Dành cho modal
+  const [userFollowings, setUserFollowings] = useState<FollowItem[]>([]);
 
-
-  
   useEffect(() => {
     if (id) {
-      dispatch(fetchUserPosts(id));
       dispatch(fetchUserDetailById(id));
+      dispatch(fetchUserPosts(id));
       dispatch(getFollowers(id));
-      dispatch(getFollowings(id));
     }
-  }, [dispatch, id]);
+  }, [id, dispatch]);
 
   useEffect(() => {
-    setActiveTab("Posts");
-  }, [id]);
-
+    if (modalTab === "following" && id) {
+      dispatch(getFollowingsByUserId(id)).then((res) => {
+        if (Array.isArray(res.payload)) {
+          setUserFollowings(res.payload);
+        }
+      });      
+    }
+  }, [modalTab, id, dispatch]);
+  
   useEffect(() => {
     if (currentUser && id) {
       dispatch(getFollowers(id))
@@ -77,62 +83,24 @@ const UserInfo_Follow = () => {
     };
   }, [currentUser]);
 
-
-
-  // const handleFollowToggle = async () => {
-  //   if (!user.userDetails || !id) return;
-
-  //   const payload = {
-  //     followingId: userDetail.userId,
-  //     followerId: currentUser!,
-  //   };
-
-  //   if (isFollowing) {
-  //     const confirmUnfollow = window.confirm("Are you sure you want to unfollow this user?");
-  //     if (!confirmUnfollow) return;
-
-  //     const result = await dispatch(unfollowUser(payload));
-  //     if (unfollowUser.fulfilled.match(result)) {
-  //       alert("Unfollowed successfully");
-  //       setIsFollowing(false);
-  //       dispatch(getFollowers(id));
-  //       dispatch(getFollowings(id));
-  //       dispatch(getTopUsersExcludingFollowed(currentUser!));
-  //     } else {
-  //       alert("Failed to unfollow");
-  //     }
-  //   } else {
-  //     const result = await dispatch(followUser(payload));
-  //     if (followUser.fulfilled.match(result)) {
-  //       alert("Followed successfully");
-  //       setIsFollowing(true);
-  //       dispatch(getFollowers(id));
-  //       dispatch(getFollowings(id));
-  //       dispatch(getTopUsersExcludingFollowed(currentUser!));
-  //     } else {
-  //       alert("Failed to follow");
-  //     }
-  //   }
-  // };
-
   const handleFollowToggle = async () => {
     if (!userDetail || !currentUser || !id) return;
-  
+
     const payload = {
       followingId: userDetail.userId,
       followerId: currentUser!,
     };
-  
+
     if (isFollowing) {
       const confirmUnfollow = window.confirm("Are you sure you want to unfollow this user?");
       if (!confirmUnfollow) return;
-  
+
       const result = await dispatch(unfollowUser(payload));
       if (unfollowUser.fulfilled.match(result)) {
         alert("Unfollowed successfully");
         setIsFollowing(false);
         dispatch(getFollowers(id));
-        dispatch(getFollowings(id));
+        dispatch(getFollowings(currentUser));
         dispatch(getTopUsersExcludingFollowed(currentUser!));
       } else {
         alert("Failed to unfollow");
@@ -143,9 +111,9 @@ const UserInfo_Follow = () => {
         alert("Followed successfully");
         setIsFollowing(true);
         dispatch(getFollowers(id));
-        dispatch(getFollowings(id));
+        dispatch(getFollowings(currentUser));
         dispatch(getTopUsersExcludingFollowed(currentUser!));
-  
+
         // Gọi action tạo thông báo "follow"
         const createdAt = new Date().toISOString();
         // Chỉ tạo thông báo nếu bạn follow người khác
@@ -162,11 +130,7 @@ const UserInfo_Follow = () => {
       }
     }
   };
-  
-  
-  
 
-  
   const handleUserClickInModal = (userId: string) => {
     if (userId === currentUser) {
       localStorage.setItem("activeItem", "My Profile");
@@ -190,7 +154,7 @@ const UserInfo_Follow = () => {
   const background = userDetail.backgroundAvatar || "https://picsum.photos/200";
 
   const handleFollowersClick = () => {
-    setActiveTab("followers");
+    setModalTab("followers");
     setIsModalOpen(true);
   };
 
@@ -248,20 +212,22 @@ const UserInfo_Follow = () => {
             </div>
             <div className="flex justify-between items-center mb-4">
               <button
-                onClick={() => setActiveTab("followers")}
-                className={`font-semibold flex-1 py-2 text-center text-sm cursor-pointer ${activeTab === "followers" ? "text-white border-b-2 border-white" : "text-gray-400"}`}
+                onClick={() => setModalTab("followers")}
+                className={`font-semibold flex-1 py-2 text-center text-sm cursor-pointer ${modalTab === "followers" ? "text-white border-b-2 border-white" : "text-gray-400"
+                  }`}
               >
                 Followers
               </button>
               <button
-                onClick={() => setActiveTab("following")}
-                className={`font-semibold flex-1 py-2 text-center text-sm cursor-pointer ${activeTab === "following" ? "text-white border-b-2 border-white" : "text-gray-400"}`}
+                onClick={() => setModalTab("following")}
+                className={`font-semibold flex-1 py-2 text-center text-sm cursor-pointer ${modalTab === "following" ? "text-white border-b-2 border-white" : "text-gray-400"
+                  }`}
               >
                 Following
               </button>
             </div>
             <div className="max-h-[25vh] overflow-y-auto scrollbar-dark">
-              {activeTab === "followers" ? (
+              {modalTab === "followers" ? (
                 followers.length === 0 ? (
                   <p className="text-center text-gray-500">Không có followers nào.</p>
                 ) : (
@@ -277,11 +243,11 @@ const UserInfo_Follow = () => {
                     ))}
                   </ul>
                 )
-              ) : followings.length === 0 ? (
+              ) : userFollowings.length === 0 ? (
                 <p className="text-center text-gray-500">Không có following nào.</p>
               ) : (
                 <ul>
-                  {followings.map((following, index) => (
+                  {userFollowings.map((following, index) => (
                     <li key={index} onClick={() => handleUserClickInModal(following.user._id)} className="flex justify-between items-center py-2 cursor-pointer">
                       <div className="flex items-center gap-3">
                         <img src={following.user.avatar || "https://i.pravatar.cc/150"} className="w-8 h-8 rounded-full object-cover" />
@@ -292,6 +258,7 @@ const UserInfo_Follow = () => {
                   ))}
                 </ul>
               )}
+
             </div>
           </div>
         </div>
@@ -301,8 +268,9 @@ const UserInfo_Follow = () => {
         {["Posts", "Featured", "Media"].map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-3 text-center font-semibold rounded-full transition-all cursor-pointer ${activeTab === tab ? "bg-zinc-800 text-white" : "text-zinc-500"}`}
+            onClick={() => setProfileTab(tab)}
+            className={`flex-1 py-3 text-center font-semibold rounded-full transition-all cursor-pointer ${profileTab === tab ? "bg-zinc-800 text-white" : "text-zinc-500"
+              }`}
           >
             {tab}
           </button>
@@ -310,13 +278,13 @@ const UserInfo_Follow = () => {
       </div>
 
       <div className="mt-4">
-        {activeTab === "Posts" && (
+        {profileTab === "Posts" && (
           <div className="max-h-[65vh] overflow-y-auto scrollbar-dark px-2">
             <Posts posts={userPosts} username={fullName} avatar={avatar} />
           </div>
         )}
-        {activeTab === "Featured" && <Featured />}
-        {activeTab === "Media" && <Media />}
+        {profileTab === "Featured" && <Featured />}
+        {profileTab === "Media" && <Media />}
       </div>
     </main>
   );

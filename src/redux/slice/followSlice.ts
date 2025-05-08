@@ -2,18 +2,20 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 
-const FOLLOW_API = 'http://localhost:3000/follow';
+// const FOLLOW_API = 'http://localhost:3000/follow';
+const FOLLOW_API = import.meta.env.VITE_API_URL + '/follow'
 
 interface UserBasicInfo {
   _id: string;
   firstname: string;
   lastname: string;
   avatar?: string;
+  username?: string;
 }
 
 interface FollowItem {
   _id: string;
-  user: UserBasicInfo; // ← Thay vì followerId / followingId
+  user: UserBasicInfo; 
   createdAt?: string;
   updatedAt?: string;
 }
@@ -21,6 +23,7 @@ interface FollowItem {
 interface FollowState {
   followers: FollowItem[];
   followings: FollowItem[];
+  authFollowings: FollowItem[];
   loading: boolean;
   error: string | null;
   successMessage: string | null;
@@ -34,27 +37,12 @@ interface FollowPayload {
 const initialState: FollowState = {
   followers: [],
   followings: [],
+  authFollowings: [],
   loading: false,
   error: null,
   successMessage: null,
 };
-// Follow user
-// redux/slice/followSlice.ts
-// export const followUser = createAsyncThunk<FollowState, FollowPayload, { rejectValue: string }>(
-//   'follow/followUser',
-//   async ({ followingId, followerId }, { rejectWithValue }) => {  // Truyền followerId thay vì token
-//     try {
-//       const response = await axios.post(
-//         `${FOLLOW_API}`,  // API endpoint của bạn
-//         { followingId },
-//         { headers: { 'x-user-id': followerId } }  // Gửi trực tiếp followerId trong header
-//       );
-//       return response.data; // Trả về dữ liệu của việc theo dõi
-//     } catch {
-//       return rejectWithValue('Failed to follow user');
-//     }
-//   }
-// );
+
 export const followUser = createAsyncThunk<string, FollowPayload, { rejectValue: string }>(
   'follow/followUser',
   async ({ followingId, followerId }, { rejectWithValue }) => {
@@ -71,60 +59,28 @@ export const followUser = createAsyncThunk<string, FollowPayload, { rejectValue:
   }
 );
 
-
-// Unfollow user
-// export const unfollowUser = createAsyncThunk<FollowState, FollowPayload, { rejectValue: string }>(
-//   'follow/unfollowUser',
-//   async ({ followingId, followerId }, { rejectWithValue, dispatch }) => {
-//     try {
-//       // Gửi yêu cầu unfollow
-//       const response = await axios.post(
-//         `${FOLLOW_API}/unfollow`, // Thay đổi URL nếu cần
-//         { followingId },
-//         {
-//           headers: { 'x-user-id': followerId }, // Gửi followerId trong header
-//         }
-//       );
-
-//       // Làm mới danh sách followers và followings sau khi unfollow
-//       dispatch(getFollowers(followerId)); // Làm mới danh sách followers
-//       dispatch(getFollowings(followerId)); // Làm mới danh sách followings
-
-//       return response.data.message; // Trả về thông báo thành công
-//     } catch (error) {
-//       // Xử lý lỗi và trả về thông báo lỗi thích hợp
-//       return rejectWithValue(
-//         axios.isAxiosError(error) && error.response?.data?.message
-//           ? error.response.data.message // Lấy message từ backend nếu có
-//           : 'Unfollow failed' // Thông báo lỗi mặc định
-//       );
-//     }
-//   }
-// );
 export const unfollowUser = createAsyncThunk<string, FollowPayload, { rejectValue: string }>(
   'follow/unfollowUser',
   async ({ followingId, followerId }, { rejectWithValue, dispatch }) => {
     try {
       // Gửi yêu cầu unfollow
       const response = await axios.post(
-        `${FOLLOW_API}/unfollow`, // Thay đổi URL nếu cần
+        `${FOLLOW_API}/unfollow`, 
         { followingId },
         {
-          headers: { 'x-user-id': followerId }, // Gửi followerId trong header
+          headers: { 'x-user-id': followerId }, 
         }
       );
 
-      // Làm mới danh sách followers và followings sau khi unfollow
-      dispatch(getFollowers(followerId)); // Làm mới danh sách followers
-      dispatch(getFollowings(followerId)); // Làm mới danh sách followings
+      dispatch(getFollowers(followerId)); 
+      dispatch(getFollowings(followerId)); 
 
-      return response.data.message; // Trả về thông báo thành công
+      return response.data.message; 
     } catch (error) {
-      // Xử lý lỗi và trả về thông báo lỗi thích hợp
       return rejectWithValue(
         axios.isAxiosError(error) && error.response?.data?.message
-          ? error.response.data.message // Lấy message từ backend nếu có
-          : 'Unfollow failed' // Thông báo lỗi mặc định
+          ? error.response.data.message 
+          : 'Unfollow failed' 
       );
     }
   }
@@ -140,8 +96,6 @@ export const getFollowers = createAsyncThunk(
       if (!response.data.data || response.data.data.length === 0) {
         return [];
       }
-
-      // Trả về dữ liệu theo đúng định dạng
       return response.data.data;
     } catch {
       return rejectWithValue('Failed to fetch followers');
@@ -163,6 +117,14 @@ export const getFollowings = createAsyncThunk(
     } catch {
       return rejectWithValue('Failed to fetch followings');
     }
+  }
+);
+
+export const getFollowingsByUserId = createAsyncThunk(
+  'follow/getFollowingsByUserId',
+  async (userId: string) => {
+    const response = await axios.get(`${FOLLOW_API}/followings/${userId}`);
+    return response.data.data; 
   }
 );
 
@@ -234,5 +196,5 @@ const followSlice = createSlice({
 });
 
 export const { resetFollowState } = followSlice.actions;
-
+export type { FollowItem };
 export default followSlice.reducer;

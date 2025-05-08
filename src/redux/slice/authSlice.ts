@@ -3,7 +3,8 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { RootState } from '../store';
 
-const URI_API = 'http://localhost:3000/auth';
+// const URI_API = 'http://localhost:3000/auth';
+const URI_API = import.meta.env.VITE_API_URL + '/auth';
 
 // Define the type for the auth state
 interface AuthState {

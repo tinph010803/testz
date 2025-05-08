@@ -3,7 +3,8 @@ import axios from 'axios';
 import { RootState } from '../store';
 import { Conversation, Message, Member } from './types';
 
-const CHAT_SERVICE_URL = 'http://localhost:3000/chat';
+// const CHAT_SERVICE_URL = 'http://localhost:3000/chat';
+const CHAT_SERVICE_URL = import.meta.env.VITE_API_URL + '/chat';
 
 
 // Define the state for Chat
@@ -750,33 +751,49 @@ const chatSlice = createSlice({
     addConversation: (state, action: PayloadAction<Conversation>) => {
       console.log("conversation mới: ", action.payload);
       state.conversations = [action.payload, ...state.conversations]; // Tạo mảng mới với cuộc trò chuyện mới
+    },
+
+    setConversationHidden: (
+      state,
+      action: PayloadAction<{ conversationId: string; hidden: boolean }>
+    ) => {
+      const { conversationId, hidden } = action.payload;
+      const conversation = state.conversations.find(c => c._id === conversationId);
+      if (conversation) {
+        conversation.hidden = hidden;
+      }
+
+      // Nếu đang xem cuộc trò chuyện này thì cập nhật luôn
+      if (state.selectedConversation?._id === conversationId) {
+        state.selectedConversation = null;
+      }
     }
 
   },
   extraReducers: (builder) => {
     builder
-  .addCase(deleteConversation.pending, (state) => {
-    state.loading = true;
-    state.error = null;
-  })
-  .addCase(deleteConversation.fulfilled, (state, action: PayloadAction<string>) => {
-    state.loading = false;
-    const conversationId = action.payload;
+      .addCase(deleteConversation.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteConversation.fulfilled, (state, action: PayloadAction<string>) => {
+        state.loading = false;
+        const conversationId = action.payload;
 
-    const conversation = state.conversations.find(c => c._id === conversationId);
-    if (conversation) {
-      conversation.hidden = true; // 👈 bạn có thể dùng `isDeletedByUser` thay thế nếu muốn rõ hơn
-      conversation.messages = [];
-    }
-    
-    if (state.selectedConversation?._id === conversationId) {
-      state.selectedConversation = null;
-    }
-  })
-  .addCase(deleteConversation.rejected, (state, action) => {
-    state.loading = false;
-    state.error = action.payload as string;
-  });
+        const conversation = state.conversations.find(c => c._id === conversationId);
+        if (conversation) {
+          // conversation.hidden = true;
+          conversation.messages = [];
+        }
+
+        if (state.selectedConversation?._id === conversationId) {
+          state.selectedConversation = null;
+        }
+      })
+      .addCase(deleteConversation.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
 
 
     builder
@@ -1114,5 +1131,5 @@ export const { addMessageToState, setSelectedConversation,
   deleteMessageLocal, addConversation,
   removeMemberFromConversation, updateAdminInConversation,
   addMemberToConversation, updateGroupAvatar, updateGroupName,
-  unhideConversation } = chatSlice.actions;
+  unhideConversation, setConversationHidden } = chatSlice.actions;
 export default chatSlice.reducer;

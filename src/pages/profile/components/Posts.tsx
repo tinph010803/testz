@@ -8,6 +8,7 @@ import { AppDispatch, RootState } from "../../../redux/store";
 import { useDispatch, useSelector } from "react-redux";
 import { deletePost, fetchUserPosts, editPost } from "../../../redux/slice/postProfileSlice";
 import { likePost, unlikePost, fetchLikeCounts } from "../../../redux/slice/likeSlice";
+import { useNavigate } from "react-router-dom";
 
 dayjs.extend(relativeTime);
 
@@ -38,6 +39,7 @@ interface Post {
   tags?: string[];
   username?: string;
   avatar?: string;
+  userId: string;
 }
 
 const Posts = ({ posts, username, avatar, commentCounts }: { posts: Post[]; username: string; avatar: string; commentCounts: Record<string, number>; }) => {
@@ -58,6 +60,7 @@ const Posts = ({ posts, username, avatar, commentCounts }: { posts: Post[]; user
           postId={post._id}
           user={username}
           avatar={avatar}
+          postUserId={post.userId}
           content={post.content}
           time={timeAgo(post.createdAt)}
           comments={commentCounts[post._id] || 0}
@@ -73,6 +76,7 @@ const PostCard = ({
   postId,
   user,
   avatar,
+  postUserId,
   content,
   time,
   comments,
@@ -82,6 +86,7 @@ const PostCard = ({
   postId: string;
   user: string;
   avatar: string;
+  postUserId: string;
   content: string;
   time: string;
   comments: number;
@@ -104,6 +109,7 @@ const PostCard = ({
   const [editContent, setEditContent] = useState(content);
   const [editMediaFiles, setEditMediaFiles] = useState<string[]>(media || []);
   const [isSaving, setIsSaving] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -161,7 +167,16 @@ const PostCard = ({
   return (
     <div className="p-4 hover:bg-zinc-900/50">
       <div className="flex items-start gap-3">
-        <img src={avatar} alt="Avatar" className="w-10 h-10 rounded-full" />
+        <img
+          src={avatar}
+          alt="Avatar"
+          className="w-10 h-10 rounded-full cursor-pointer hover:opacity-80 transition"
+          onClick={() => {
+            if (postUserId) {
+              navigate(`/home/user-info/${postUserId}`);
+            }
+          }}
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

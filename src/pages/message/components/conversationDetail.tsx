@@ -3,7 +3,7 @@ import { ChatInput } from "./index";
 import { format, formatDistanceToNow } from "date-fns";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../../../redux/store";
-import { deleteConversation, deleteMessageLocal, incrementUnreadCount, revokeMessageLocal } from "../../../redux/slice/chatSlice";
+import { deleteConversation, deleteMessageLocal, incrementUnreadCount, revokeMessageLocal, setConversationHidden } from "../../../redux/slice/chatSlice";
 import { Conversation, Member, Message } from '../../../redux/slice/types';
 import socket from '../../../utils/socket';
 import socketCall from '../../../utils/socketCall';
@@ -100,6 +100,12 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
       messagesEndRef.current.scrollIntoView({ behavior: "auto" });
     }
   }, [selectedConversation?._id]);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages?.length]);
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -314,13 +320,21 @@ const ConversationDetail: React.FC<ConversationDetailProps> = ({
         <p className="mb-2">Are you sure you want to delete this chat?</p>
         <div className="flex justify-end gap-2">
           <button
-            onClick={() => {
-              dispatch(
+            onClick={async () => {
+               await dispatch(
                 deleteConversation({
                   conversationId: selectedConversation._id,
                   userId: currentUser._id,
                 })
               );
+
+              dispatch(
+                setConversationHidden({
+                  conversationId: selectedConversation._id,
+                  hidden: true,
+                })
+              );
+
               toast.dismiss(t.id);
             }}
             className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 cursor-pointer"

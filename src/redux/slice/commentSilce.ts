@@ -2,13 +2,18 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { RootState } from '../store';
 
-const COMMENT_SERVICE_URL = 'http://localhost:5004/comments';
 
+const COMMENT_SERVICE_URL = import.meta.env.VITE_API_URL + '/comments';
 interface Reply {
     _id?: string;
     userId: string;
     text: string;
     timestamp: string;
+    user: {
+        firstname: string;
+        lastname: string;
+        avatar: string;
+    };
 }
 
 export interface CommentType {
@@ -46,20 +51,20 @@ const initialState: CommentState = {
 export const getCommentsByPost = createAsyncThunk<CommentType[], string>(
     'comments/getByPost',
     async (postId, { getState, rejectWithValue }) => {
-      const token = (getState() as RootState).auth.token;
-  
-      try {
-        const res = await axios.get(`${COMMENT_SERVICE_URL}/${postId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined
-        });
-        return res.data as CommentType[];
-      } catch (error) {
-        console.error("❌ Failed to get comments:", error);
-        return rejectWithValue('Failed to fetch comments');
-      }
+        const token = (getState() as RootState).auth.token;
+
+        try {
+            const res = await axios.get(`${COMMENT_SERVICE_URL}/${postId}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined
+            });
+            return res.data as CommentType[];
+        } catch (error) {
+            console.error("❌ Failed to get comments:", error);
+            return rejectWithValue('Failed to fetch comments');
+        }
     }
-  );
-  
+);
+
 
 export const createComment = createAsyncThunk(
     'comments/create',
@@ -97,7 +102,8 @@ export const addReply = createAsyncThunk(
                 { text },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            return res.data.comment;
+
+            return { commentId, reply: res.data.reply }; // ✅ sửa tại đây
         } catch (error) {
             return rejectWithValue('Failed to reply to comment');
         }
@@ -128,6 +134,13 @@ const commentSlice = createSlice({
             state.error = null;
             state.loading = false;
         },
+        appendReplyToComment: (state, action: PayloadAction<{ commentId: string; reply: Reply }>) => {
+            const { commentId, reply } = action.payload;
+            const comment = state.comments.find((c) => c._id === commentId);
+            if (comment) {
+                comment.replies.push(reply);
+            }
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -148,12 +161,14 @@ const commentSlice = createSlice({
                 state.comments.unshift(action.payload); // thêm vào đầu
             })
 
-            .addCase(addReply.fulfilled, (state, action: PayloadAction<CommentType>) => {
-                const index = state.comments.findIndex(c => c._id === action.payload._id);
-                if (index !== -1) {
-                    state.comments[index] = action.payload;
+            .addCase(addReply.fulfilled, (state, action: PayloadAction<{ commentId: string; reply: Reply }>) => {
+                const { commentId, reply } = action.payload;
+                const comment = state.comments.find((c) => c._id === commentId);
+                if (comment) {
+                    comment.replies.push(reply);
                 }
             })
+
             .addCase(getCommentCountsByPosts.fulfilled, (state, action: PayloadAction<Record<string, number>>) => {
                 state.commentCounts = action.payload;
             });

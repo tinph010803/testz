@@ -1,13 +1,13 @@
 import { Share2, MessageSquare, Users, UserRoundPen, ArrowLeft, ChevronDown, Image, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { Posts, Featured, Media } from "./components";
+import { Posts } from "./components"; // ✅ Xoá Featured và Media vì chưa dùng
 import { useEffect, useState, useRef } from "react";
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../../redux/store';
 import { fetchUserPosts, createPost } from "../../redux/slice/postProfileSlice";
 import { fetchUserLikedPosts } from "../../redux/slice/likeSlice";
 import { getFollowers, getFollowings } from "../../redux/slice/followSlice";
-// import { getCommentCountsByPosts } from "../../redux/slice/commentSilce"; // nếu chưa có
+
 
 const MyProfile = () => {
     const navigate = useNavigate();
@@ -34,8 +34,6 @@ const MyProfile = () => {
             dispatch(getFollowings(userId));
         }
     }, [dispatch, userId]);
-
-
 
     useEffect(() => {
         if (userId) {
@@ -152,7 +150,11 @@ const MyProfile = () => {
                                 ) : (
                                     <ul>
                                         {followers.map((f, idx) => (
-                                            <li key={idx} className="flex justify-between items-center py-2">
+                                            <li
+                                                key={idx}
+                                                onClick={() => navigate(`/home/user-info/${f.user._id}`)}
+                                                className="flex justify-between items-center py-2 cursor-pointer"
+                                            >
                                                 <div className="flex items-center gap-3">
                                                     <img src={f.user.avatar || "https://i.pravatar.cc/150"} className="w-8 h-8 rounded-full object-cover" />
                                                     <span>{f.user.firstname} {f.user.lastname}</span>
@@ -167,7 +169,11 @@ const MyProfile = () => {
                             ) : (
                                 <ul>
                                     {followings.map((f, idx) => (
-                                        <li key={idx} className="flex justify-between items-center py-2">
+                                        <li
+                                            key={idx}
+                                            onClick={() => navigate(`/home/user-info/${f.user._id}`)}
+                                            className="flex justify-between items-center py-2 cursor-pointer "
+                                        >
                                             <div className="flex items-center gap-3">
                                                 <img src={f.user.avatar || "https://i.pravatar.cc/150"} className="w-8 h-8 rounded-full object-cover" />
                                                 <span>{f.user.firstname} {f.user.lastname}</span>
@@ -175,6 +181,7 @@ const MyProfile = () => {
                                             <span className="text-blue-500">Friend</span>
                                         </li>
                                     ))}
+
                                 </ul>
                             )}
                         </div>
@@ -343,21 +350,16 @@ const MyProfile = () => {
                     </div>
                 )}
 
-                <div className="mt-4">
-                    {activeTab === "Posts" && (
+                {activeTab === "Posts" && (
+                    <div className="max-h-[60vh] overflow-y-auto scrollbar-dark px-4">
                         <Posts
                             posts={userPosts}
                             username={username}
                             avatar={userDetail?.avatar ?? "default-avatar-url"}
                             commentCounts={commentCounts}
                         />
-                    )}
-                    {activeTab === "Featured" && <Featured />}
-                    {activeTab === "Media" && <Media />}
-                </div>
-
-
-
+                    </div>
+                )}
             </main>
         </>
     );

@@ -80,24 +80,34 @@ const MainContent = () => {
 
             setIsPosting(true);
             const base64Media = await Promise.all(mediaFiles.map(convertToBase64));
-
+            console.log("asdd");
+            
             await dispatch(createPost({
                 content: postContent,
                 media: base64Media.length ? base64Media : undefined,
             })).unwrap();
-
+            console.log("Post created successfullyzzz");
+            
             await dispatch(fetchAllPosts());
             setPostContent("");
             setMediaFiles([]);
             setIsExpanded(false);
+
+            console.log("Post created successfullyttttttttttttt");
+            
         } catch (err) {
             alert("Posting failed: " + err);
         } finally {
             setIsPosting(false);
         }
-    }; const filteredPosts = posts.filter((post) =>
-        post.content.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    }; 
+    
+    const filteredPosts = posts.filter((post) => {
+        const contentMatch = post.content?.toLowerCase().includes(searchTerm.toLowerCase());
+        const usernameMatch = post.username?.toLowerCase().includes(searchTerm.toLowerCase());
+        return contentMatch || usernameMatch;
+    });
+    
 
     return (
         <main className="bg-zinc-900 text-white min-h-screen">
@@ -210,12 +220,12 @@ const MainContent = () => {
                 {!loading && !error && (
                     filteredPosts.map((post) => (
                         <Posts
-                            key={post._id}
-                            posts={[post]}
+                            posts={filteredPosts}
                             username={post.username || "Ẩn danh"}
                             avatar={post.avatar || "https://picsum.photos/200"}
                             commentCounts={commentCounts}
                         />
+
                     ))
                 )}
             </div>

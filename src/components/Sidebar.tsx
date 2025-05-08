@@ -1,27 +1,22 @@
-import type React from "react";
 import { Home, Bell, MessageSquare, Bookmark, User, LayoutDashboard, MoreHorizontal, Settings, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Columns2, ChevronRight } from "lucide-react";
 import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../redux/store';
+import { RootState, AppDispatch } from '../redux/store';
 import { logout } from '../redux/slice/authSlice';
+import { fetchUnreadCount } from "../redux/slice/notificationSlice";
 
-import { AppDispatch } from "../redux/store"; // Import AppDispatch
-import { fetchUnreadCount } from "../redux/slice/notificationSlice"; // Import action fetchUnreadCount
-
-
+// 🧠 Không còn import không dùng, không còn biến isHovered, toggleSidebar
 
 const Sidebar = () => {
-    // const dispatch = useDispatch();
     const dispatch = useDispatch<AppDispatch>();
-    const [showSidebar, setShowSidebar] = useState(true);
+    const [showSidebar] = useState(true);
     const navigate = useNavigate();
     const [showMenu, setShowMenu] = useState(false);
-    const [isHovered, setIsHovered] = useState(false);
-    const userDetail = useSelector((state: RootState) => state.auth.userDetail); 
-    const unreadCount = useSelector((state: RootState) => state.notification.unreadCount); // Lấy số lượng thông báo chưa đọc từ Redux
-   
+
+    const userDetail = useSelector((state: RootState) => state.auth.userDetail);
+    const unreadCount = useSelector((state: RootState) => state.notification.unreadCount);
+
     const getInitialActiveItem = () => {
         const item = localStorage.getItem("activeItem");
         const validItems = ["Home", "Notifications", "Messages", "Bookmarks", "My Profile", "Explore"];
@@ -29,8 +24,8 @@ const Sidebar = () => {
     };
 
     const [activeItem, setActiveItem] = useState(getInitialActiveItem);
+
     useEffect(() => {
-        // Gọi fetchUnreadCount khi Sidebar render lần đầu tiên
         dispatch(fetchUnreadCount());
     }, [dispatch]);
 
@@ -40,26 +35,18 @@ const Sidebar = () => {
         };
 
         window.addEventListener("storage", handleStorageChange);
-        return () => {
-            window.removeEventListener("storage", handleStorageChange);
-        };
+        return () => window.removeEventListener("storage", handleStorageChange);
     }, []);
 
     const handleNavigation = (label: string, path: string) => {
-        setActiveItem(label); // Set the active item
-        localStorage.setItem("activeItem", label); // Store in localStorage
-        navigate(path); // Navigate to the correct path
-    };
-
-    const toggleSidebar = () => {
-        setShowSidebar(prev => !prev); // Toggle trạng thái sidebar
+        setActiveItem(label);
+        localStorage.setItem("activeItem", label);
+        navigate(path);
     };
 
     return (
         <aside
             className={`fixed top-0 left-0 h-screen ${showSidebar ? 'w-72' : 'w-20'} bg-[#1F1F1F] text-white p-3 flex flex-col justify-between border-r border-zinc-800 transition-all duration-300`}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
         >
             <div>
                 <a href="/home" className={`text-[#00FF7F] ${showSidebar ? 'text-3xl' : 'text-sm'} font-bold`}>
@@ -114,14 +101,6 @@ const Sidebar = () => {
                     </div>
                 )}
             </div>
-
-            {/* Nút toggle thu/phóng sidebar */}
-            <button
-                className={`cursor-pointer absolute top-4 right-1 text-lg transition duration-200 ${isHovered || showSidebar ? 'text-green-400' : 'text-white hover:text-gray-400'}`}
-                onClick={toggleSidebar}
-            >
-                {showSidebar ? <Columns2 size={20} /> : <ChevronRight size={20} />}
-            </button>
         </aside>
     );
 };

@@ -17,7 +17,7 @@ const CallModal: React.FC = () => {
   useEffect(() => {
     socketCall.on('callAccepted', async () => {
       try {
-        await joinOnly(`call_${call.fromUserId}_${call.toUserId}`, call.fromUserId);
+        await joinOnly(`call_${call.fromUserId}_${call.toUserId}`, call.toUserId);
         await publishTracks();
         dispatch(acceptedCall());
       } catch (err) {
